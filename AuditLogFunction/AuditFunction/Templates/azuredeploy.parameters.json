@@ -1,0 +1,15 @@
+﻿{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "slackWebhookUrl": {
+            "value": "https://hooks.slack.com/services/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"
+        },
+        "WebDeployPackageFolder": {
+            "value": "AuditFunction/Assets"
+        },
+        "WebDeployPackageFileName": {
+            "value": "AuditLogProcessor.zip"
+        }
+    }
+}

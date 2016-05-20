@@ -1,0 +1,159 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "slackWebhookUrl": {
+      "type": "string",
+      "defaultValue": "https://hooks.slack.com/services/AAAAAAAAA/AAAAAAAAA/AAAAAAAAAAAAAAAAAAAAAAAA",
+      "metadata": {
+        "description": "Target URL from Slack.com received after setting up a webhook extension for a Slack Channel"
+      }
+    },
+      "_artifactsLocation": {
+          "type": "string"
+      },
+      "_artifactsLocationSasToken": {
+          "type": "securestring"
+      },
+      "WebDeployPackageFolder": {
+          "type": "string",
+          "minLength": 1,
+          "metadata": {
+              "description": "WebDeploy package location. This path is relative to the _artifactsLocation parameter"
+          }
+      },
+      "WebDeployPackageFileName": {
+          "type": "string",
+          "minLength": 1,
+          "metadata": {
+              "description": "Name of the webdeploy package"
+          }
+      }
+  },
+  "variables": {
+    "name": "[concat('auditfunc', substring(uniqueString(resourceGroup().id), 0, 4))]",
+    "location": "WestUS",
+    "serviceBusNamespaceName": "[concat(variables('name'), 'sb')]",
+    "serviceBusEventHubName": "[concat(variables('name'), 'eh')]",
+    "serviceBusConsumerGroupName": "[concat(variables('name'), 'cg')]",
+    "ehVersion": "2015-08-01",
+    "defaultSASKeyName": "RootManageSharedAccessKey",
+    "authRuleResourceId": "[resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', variables('serviceBusNamespaceName'), variables('defaultSASKeyName'))]",
+    "storageAccountName": "[concat(variables('name'), 'storage')]",
+    "hostingPlanName": "[concat(variables('name'), 'plan')]",
+    "functionAppName": "[concat(variables('name'), 'app')]"
+  },
+  "resources": [
+    {
+      "apiVersion": "[variables('ehVersion')]",
+      "name": "[variables('serviceBusNamespaceName')]",
+      "type": "Microsoft.ServiceBus/Namespaces",
+      "location": "[variables('location')]",
+      "kind": "EventHub",
+      "sku": {
+        "name": "StandardSku",
+        "tier": "Standard"
+      },
+      "tags": {
+        "displayName": "ServiceBusNamespace"
+      },
+      "resources": [
+        
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('storageAccountName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "accountType": "Standard_LRS"
+      },
+      "tags": {
+        "displayName": "StorageAccount"
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2015-04-01",
+      "name": "[variables('hostingPlanName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "name": "[variables('hostingPlanName')]",
+        "sku": "Basic",
+        "workerSize": "1",
+        "hostingEnvironment": "",
+        "numberOfWorkers": 1
+      },
+      "tags": {
+        "displayName": "AppHostingPlan"
+      }
+    },
+    {
+      "apiVersion": "2015-08-01",
+      "type": "Microsoft.Web/sites",
+      "name": "[variables('functionAppName')]",
+      "location": "[resourceGroup().location]",
+      "kind": "functionapp",
+      "properties": {
+        "name": "[variables('functionAppName')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+      },
+      "tags": {
+        "displayName": "FunctionApp"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ],
+      "resources": [
+        {
+          "apiVersion": "2016-03-01",
+          "name": "appsettings",
+          "type": "config",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+          ],
+          "tags": {
+            "displayName": "AppSettings"
+          },
+          "properties": {
+            "AzureWebJobsStorage": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1,';')]",
+            "AzureWebJobsDashboard": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1,';')]",
+            "FUNCTIONS_EXTENSION_VERSION": "latest",
+            "EventHubConnection": "[listkeys(variables('authRuleResourceId'), variables('ehVersion')).primaryConnectionString]",
+            "SLACK_WEBHOOK_URL": "[parameters('slackWebhookUrl')]"
+          }
+        },
+          {
+              "name": "MSDeploy",
+              "type": "extensions",
+              "location": "[resourceGroup().location]",
+              "apiVersion": "2015-08-01",
+              "dependsOn": [
+                  "[concat('Microsoft.Web/sites/', variables('functionAppName'))]"
+              ],
+              "tags": {
+                  "displayName": "WebDeploy"
+              },
+              "properties": {
+                  "packageUri": "[concat(parameters('_artifactsLocation'), '/', parameters('WebDeployPackageFolder'), '/', parameters('WebDeployPackageFileName'), parameters('_artifactsLocationSasToken'))]",
+                  "dbType": "None",
+                  "connectionString": ""
+              }
+          }
+      ]
+    }
+  ],
+  "outputs": {
+    "NamespaceConnectionString": {
+      "type": "string",
+      "value": "[listkeys(variables('authRuleResourceId'), variables('ehVersion')).primaryConnectionString]"
+    },
+    "SharedAccessPolicyPrimaryKey": {
+      "type": "string",
+      "value": "[listkeys(variables('authRuleResourceId'), variables('ehVersion')).primaryKey]"
+    }
+  }
+}
