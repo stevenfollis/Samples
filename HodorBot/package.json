@@ -1,0 +1,17 @@
+{
+  "name": "HodorBot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "botbuilder": "^0.11.1",
+    "lodash": "^4.13.0",
+    "restify": "^4.0.4"
+  }
+}
