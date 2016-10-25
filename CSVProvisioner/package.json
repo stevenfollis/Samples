@@ -1,14 +1,14 @@
 {
-  "name": "CSVProvisioner",
+  "name": "csvprovisioner",
   "version": "1.0.0",
-  "description": "",
+  "description": "Takes values from a CSV file and pipes them into the parameters settings of an ARM Template deployment",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Steven Follis",
+  "license": "MIT",
   "dependencies": {
     "azure-arm-resource": "^1.5.1-preview",
     "csvtojson": "^1.0.3",
