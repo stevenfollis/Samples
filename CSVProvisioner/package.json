@@ -1,0 +1,18 @@
+{
+  "name": "CSVProvisioner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "azure-arm-resource": "^1.5.1-preview",
+    "csvtojson": "^1.0.3",
+    "lodash": "^4.16.4",
+    "ms-rest-azure": "^1.15.2"
+  }
+}

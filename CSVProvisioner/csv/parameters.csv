@@ -1,0 +1,4 @@
+vmName,adminUsername,adminPassword,dnsNameForPublicIP,windowsOSVersion
+vm1,steven,stevenPassword1!,armsample123,2012-R2-Datacenter
+vm2,steven,stevenPassword1!,armsample456,2012-R2-Datacenter
+vm3,steven,stevenPassword1!,armsample789,2008-R2-SP1
