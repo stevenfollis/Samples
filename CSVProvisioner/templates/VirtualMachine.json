@@ -40,6 +40,12 @@
             "metadata": {
                 "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version. Allowed values: 2008-R2-SP1, 2012-Datacenter, 2012-R2-Datacenter."
             }
+        },
+        "virtualNetworkName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the shared VNet to use for the VM"
+            }
         }
     },
     "variables": {
@@ -57,7 +63,7 @@
         "vhdStorageContainerName": "vhds",
         "vmName": "[concat(parameters('vmName'), variables('randomPad'))]",
         "vmSize": "Standard_A2",
-        "virtualNetworkName": "[concat(parameters('vmName'), 'vnet', variables('randomPad'))]",
+        "virtualNetworkName": "[parameters('virtualNetworkName')]",
         "vnetId": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
         "subnetRef": "[concat(variables('vnetId'), '/subnets/', variables('subnetName'))]",
         "vhdStorageName": "[concat(parameters('vmName'), 'storage', variables('randomPad'))]",
@@ -96,30 +102,6 @@
         },
         {
             "apiVersion": "2015-06-15",
-            "type": "Microsoft.Network/virtualNetworks",
-            "name": "[variables('virtualNetworkName')]",
-            "location": "[resourceGroup().location]",
-            "tags": {
-                "displayName": "VirtualNetwork"
-            },
-            "properties": {
-                "addressSpace": {
-                    "addressPrefixes": [
-                        "[variables('addressPrefix')]"
-                    ]
-                },
-                "subnets": [
-                    {
-                        "name": "[variables('subnetName')]",
-                        "properties": {
-                            "addressPrefix": "[variables('subnetPrefix')]"
-                        }
-                    }
-                ]
-            }
-        },
-        {
-            "apiVersion": "2015-06-15",
             "type": "Microsoft.Network/networkInterfaces",
             "name": "[variables('nicName')]",
             "location": "[resourceGroup().location]",
@@ -127,8 +109,7 @@
                 "displayName": "NetworkInterface"
             },
             "dependsOn": [
-                "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
-                "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+                "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]"
             ],
             "properties": {
                 "ipConfigurations": [

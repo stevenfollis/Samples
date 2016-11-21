@@ -2,17 +2,17 @@ module.exports = {
 
     auth: {
 
-        // Your subscription ID
-        "AZURE_SUBSCRIPTION_ID": "00000000-0000-0000-0000-000000000000",
-
         // AzureAD Application Client ID
-        "APPLICATION_ID": "00000000-0000-0000-0000-000000000000",
+        "APPLICATION_ID": "",
 
         // AzureAD Application Secret/Key
-        "APPLICATION_SECRET": "0000000000000000000000000000000000000000000=",
+        "APPLICATION_SECRET": "",
 
         // Your AzureAD tenant as a GUID
-        "DOMAIN": "00000000-0000-0000-0000-000000000000"
+        "DOMAIN": "",
+
+        // Your subscription ID
+        "AZURE_SUBSCRIPTION_ID": ""
 
     },
 
@@ -21,7 +21,8 @@ module.exports = {
     },
 
     template: {
-        filePath: './template/azuredeploy.json'
+        filePath: './templates/VirtualMachine.json',
+        sharedResourcesPath: './templates/SharedResources.json'
     },
 
     group: {

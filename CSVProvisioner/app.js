@@ -23,7 +23,13 @@ login()
 
         // Execute in parallel all deployent preparation tasks
         Promise
-            .all([Promise.resolve(client), getTemplate(), getParameters(), createRG(client)])
+            .resolve(client)
+            .then(createRG)
+            .then(deploySharedTemplate)
+            .then(getParameters)
+            .then(function (parameters) {
+                return ([client, parameters]);
+            })
             .then(deployTemplate)
             .then(function (values) {
 
@@ -60,35 +66,86 @@ function login() {
 }
 
 // =========================================================
-// Step 2: Parse CSV File containing ARM Template parameters
+// Step 2: Create an Azure Resource Group 
 // =========================================================
-function getTemplate() {
+function createRG(client) {
 
     return new Promise((resolve, reject) => {
 
-        fs.readFile(config.template.filePath, 'utf8', (error, results) => {
+        // Use the RM client to create a resource group
+        client
+            .resourceGroups
+            .createOrUpdate(config.group.name, config.group.properties, function (error, response) {
 
-            if (error) reject(error);
+                if (error) reject(error);
 
-            console.log(`Successfully retrieved ARM Template file`);
-            resolve(JSON.parse(results));
+                console.log(`Created Resource Group named ${response.name}`);
 
-        });
+                // Resolve Promise
+                resolve([client, response.name]);
+
+            });
 
     });
 
 }
 
 // =========================================================
-// Step 2: Parse CSV File containing ARM Template parameters
+// Step 3: Deploy Shared Resources ARM Template
 // =========================================================
-function getParameters() {
+function deploySharedTemplate(values) {
+
+    var client = values[0];
+    var rgName = values[1];
+    var deploymentName = `SharedResources-${_.random(100, 999)}`;
+
+    // Read template from disk
+    var template = JSON.parse(fs.readFileSync(config.template.sharedResourcesPath, 'utf8'));
+
+    var deploymentParameters = {
+        "properties": {
+            "parameters": {},
+            "template": template,
+            "mode": "Incremental"
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+
+        // Deploy template
+        client
+            .deployments
+            .createOrUpdate(rgName, deploymentName, deploymentParameters, function (error, result) {
+
+                if (error) reject(error);
+
+                console.log(`Deployed Shared Resources ARM Template`);
+
+                // Remove the Type attribute for the RG outputs
+                var scrubbedOutputs = _.mapValues(result.properties.outputs, function (output) {
+
+                    return { value: output.value };
+
+                });
+
+                resolve(scrubbedOutputs);
+
+            });
+
+    });
+
+}
+
+// =========================================================
+// Step 4: Parse CSV File containing ARM Template parameters and merge with Shared RG's outputs
+// =========================================================
+function getParameters(sharedOutputs) {
 
     return new Promise((resolve, reject) => {
 
         converter.fromFile(config.parameters.filePath, function (error, rows) {
 
-            if (error) console.error(error);
+            if (error) reject(error);
 
             // CSV values are returned as s tring (ex. {name: jane} )
             // ARM parameters have a format of parameter name, then a value object
@@ -108,6 +165,9 @@ function getParameters() {
 
                 });
 
+                // Add parameters from Shared Resources deployment
+                _.assignIn(processed, sharedOutputs);
+
                 // Push new object into the array
                 processedParameters.push(processed);
 
@@ -123,32 +183,7 @@ function getParameters() {
 }
 
 // =========================================================
-// Step 3: Create an Azure Resource Group 
-// =========================================================
-function createRG(client) {
-
-    return new Promise((resolve, reject) => {
-
-        // Use the RM client to create a resource group
-        client
-            .resourceGroups
-            .createOrUpdate(config.group.name, config.group.properties, function (error, response) {
-
-                if (error) reject(error);
-
-                console.log(`Created Resource Group named ${response.name}`);
-
-                // Resolve Promise
-                resolve(response.name);
-
-            });
-
-    });
-
-}
-
-// =========================================================
-// Step 4: Deploy ARM Template
+// Step 5: Deploy specific ARM Template
 // =========================================================
 function deployTemplate(values) {
 
@@ -156,10 +191,12 @@ function deployTemplate(values) {
 
         // Set variables from the values array
         var client = values[0];
-        var template = values[1];
-        var parameters = values[2];
-        var rgName = values[3];
+        var parameters = values[1];
+        var rgName = config.group.name;
         var counter = 0;
+
+        // Read template from disk
+        var template = JSON.parse(fs.readFileSync(config.template.filePath, 'utf8'));
 
         // Loop through the sets of parameters 
         // creating a new deployment for each set in the parameters array
@@ -171,8 +208,8 @@ function deployTemplate(values) {
             // Define object for template deployment
             var deploymentParameters = {
                 "properties": {
-                    "parameters": values[2][i],
-                    "template": values[1],
+                    "parameters": parameter,
+                    "template": template,
                     "mode": "Incremental"
                 }
             };
@@ -182,7 +219,7 @@ function deployTemplate(values) {
                 .deployments
                 .createOrUpdate(rgName, deploymentName, deploymentParameters, function (error, result) {
 
-                    if (error) console.error(error);
+                    if (error) reject(error);
 
                     console.log(`Deployed ARM Template`);
 
