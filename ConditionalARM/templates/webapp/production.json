@@ -1,0 +1,88 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "hostingPlanName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "administratorLogin": {
+      "type": "string"
+    },
+    "administratorLoginPassword": {
+      "type": "securestring"
+    },
+    "databaseName": {
+      "type": "string"
+    },
+    "sqlserverName": {
+      "type": "string"
+    },
+    "dbFQDN": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "webSiteName": "[concat('webSite', uniqueString(resourceGroup().id))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-08-01",
+      "name": "[variables('webSiteName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "displayName": "Website"
+      },
+      "properties": {
+        "name": "[variables('webSiteName')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]"
+      },
+      "resources": [
+        {
+          "apiVersion": "2015-08-01",
+          "type": "config",
+          "name": "connectionstrings",
+          "dependsOn": [
+            "[concat('Microsoft.Web/Sites/', variables('webSiteName'))]"
+          ],
+          "properties": {
+            "DefaultConnection": {
+              "value": "[concat('Data Source=tcp:', parameters('dbFQDN'), ',1433;Initial Catalog=', parameters('databaseName'), ';User Id=', parameters('administratorLogin'), '@', parameters('sqlserverName'), ';Password=', parameters('administratorLoginPassword'), ';')]",
+              "type": "SQLServer"
+            }
+          }
+        },
+        {
+          "apiVersion": "2015-04-01",
+          "name": "Staging",
+          "type": "slots",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[concat('Microsoft.Web/Sites/', variables('webSiteName'))]"
+          ],
+          "properties": {
+          },
+          "resources": [
+            {
+              "apiVersion": "2015-04-01",
+              "name": "connectionstrings",
+              "type": "config",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites/Slots', variables('webSiteName'), 'Staging')]"
+              ],
+              "properties": {
+                "DefaultConnection": {
+                  "value": "[concat('Data Source=tcp:', parameters('dbFQDN'), ',1433;Initial Catalog=', parameters('databaseName'), ';User Id=', parameters('administratorLogin'), '@', parameters('sqlserverName'), ';Password=', parameters('administratorLoginPassword'), ';')]",
+                  "type": "SQLServer"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputs": {
+  }
+}
